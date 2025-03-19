@@ -16,6 +16,7 @@ exports.ProductsService = void 0;
 const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
+const csv_parse_1 = require("csv-parse");
 const product_schema_1 = require("./schemas/product.schema");
 let ProductsService = class ProductsService {
     productModel;
@@ -23,11 +24,47 @@ let ProductsService = class ProductsService {
         this.productModel = productModel;
     }
     async create(createProductDto) {
-        const createdProduct = new this.productModel(createProductDto);
-        return createdProduct.save();
+        const createdProduct = await this.productModel.create(createProductDto);
+        return createdProduct;
     }
     async findAll() {
         return this.productModel.find().exec();
+    }
+    async createManyFromCsv(fileBuffer) {
+        return new Promise((resolve, reject) => {
+            const products = [];
+            const parser = (0, csv_parse_1.parse)({
+                delimiter: ',',
+                columns: true,
+                skip_empty_lines: true,
+            });
+            parser.on('readable', () => {
+                let record;
+                while ((record = parser.read()) !== null) {
+                    const product = {
+                        name: record.name,
+                        description: record.description,
+                        price: parseFloat(record.price),
+                        quantity: parseInt(record.quantity, 10),
+                    };
+                    products.push(product);
+                }
+            });
+            parser.on('error', (err) => {
+                reject(err);
+            });
+            parser.on('end', async () => {
+                try {
+                    const result = await this.productModel.insertMany(products);
+                    resolve(result.length);
+                }
+                catch (error) {
+                    reject(error);
+                }
+            });
+            parser.write(fileBuffer);
+            parser.end();
+        });
     }
 };
 exports.ProductsService = ProductsService;

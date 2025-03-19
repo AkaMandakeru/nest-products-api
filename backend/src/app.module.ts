@@ -1,11 +1,36 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ProductsModule } from './products/products.module';
+import { AuthModule } from './auth/auth.module';
+import { LoggingMiddleware } from './common/middleware/logging.middleware';
+import { DatabaseLoggingInterceptor } from './common/interceptors/database-logging.interceptor';
 
 @Module({
   imports: [
-    MongooseModule.forRoot('mongodb://localhost:27017/productsdb'),
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGODB_URI') || 'mongodb://localhost:27017/products',
+      }),
+      inject: [ConfigService],
+    }),
     ProductsModule,
+    AuthModule,
+  ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: DatabaseLoggingInterceptor,
+    },
   ],
 })
-export class AppModule { }
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggingMiddleware).forRoutes('*');
+  }
+}

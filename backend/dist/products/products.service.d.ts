@@ -1,9 +1,10 @@
 import { Model } from 'mongoose';
-import { Product, ProductDocument } from './schemas/product.schema';
+import { Product } from './schemas/product.schema';
 import { CreateProductDto } from './dto/create-product.dto';
 export declare class ProductsService {
-    private productModel;
-    constructor(productModel: Model<ProductDocument>);
+    private readonly productModel;
+    constructor(productModel: Model<Product>);
     create(createProductDto: CreateProductDto): Promise<Product>;
     findAll(): Promise<Product[]>;
+    createManyFromCsv(fileBuffer: Buffer): Promise<number>;
 }

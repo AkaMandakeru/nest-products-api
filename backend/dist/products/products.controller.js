@@ -14,8 +14,10 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductsController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
 const products_service_1 = require("./products.service");
 const create_product_dto_1 = require("./dto/create-product.dto");
+const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 let ProductsController = class ProductsController {
     productsService;
     constructor(productsService) {
@@ -23,6 +25,10 @@ let ProductsController = class ProductsController {
     }
     async create(createProductDto) {
         return this.productsService.create(createProductDto);
+    }
+    async uploadCsv(file) {
+        const createdCount = await this.productsService.createManyFromCsv(file.buffer);
+        return { created: createdCount };
     }
     async findAll() {
         return this.productsService.findAll();
@@ -37,6 +43,14 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "create", null);
 __decorate([
+    (0, common_1.Post)('upload'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    __param(0, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ProductsController.prototype, "uploadCsv", null);
+__decorate([
     (0, common_1.Get)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
@@ -44,6 +58,7 @@ __decorate([
 ], ProductsController.prototype, "findAll", null);
 exports.ProductsController = ProductsController = __decorate([
     (0, common_1.Controller)('products'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [products_service_1.ProductsService])
 ], ProductsController);
 //# sourceMappingURL=products.controller.js.map

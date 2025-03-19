@@ -5,5 +5,8 @@ export declare class ProductsController {
     private readonly productsService;
     constructor(productsService: ProductsService);
     create(createProductDto: CreateProductDto): Promise<Product>;
+    uploadCsv(file: Express.Multer.File): Promise<{
+        created: number;
+    }>;
     findAll(): Promise<Product[]>;
 }
