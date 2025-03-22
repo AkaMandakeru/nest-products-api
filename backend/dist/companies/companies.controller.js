@@ -34,7 +34,12 @@ let CompaniesController = class CompaniesController {
         return this.companiesService.update(user.id, updateCompanyDto);
     }
     async hasCompany(user) {
-        return { hasCompany: await this.companiesService.hasCompany(user.id) };
+        const hasCompany = await this.companiesService.hasCompany(user.id);
+        let company = null;
+        if (hasCompany) {
+            company = await this.companiesService.findByUserId(user.id);
+        }
+        return { hasCompany, company };
     }
 };
 exports.CompaniesController = CompaniesController;

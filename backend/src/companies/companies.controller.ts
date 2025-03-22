@@ -4,6 +4,7 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../auth/schemas/user.schema';
+import { Company } from './schemas/company.schema';
 
 @Controller('companies')
 @UseGuards(JwtAuthGuard)
@@ -30,6 +31,13 @@ export class CompaniesController {
 
   @Get('exists')
   async hasCompany(@CurrentUser() user: User) {
-    return { hasCompany: await this.companiesService.hasCompany(user.id) };
+    const hasCompany = await this.companiesService.hasCompany(user.id);
+    let company: Company | null = null;
+    
+    if (hasCompany) {
+      company = await this.companiesService.findByUserId(user.id);
+    }
+    
+    return { hasCompany, company };
   }
 }

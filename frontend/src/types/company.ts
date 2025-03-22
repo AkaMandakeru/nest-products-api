@@ -10,4 +10,5 @@ export interface Company {
 
 export interface CompanyResponse {
   hasCompany: boolean;
+  company?: Company;
 }
