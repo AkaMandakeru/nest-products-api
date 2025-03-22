@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Product } from '@/types/product';
 import toast from 'react-hot-toast';
@@ -8,16 +8,28 @@ import toast from 'react-hot-toast';
 interface ProductFormProps {
   onProductCreated: () => void;
   token: string | null;
+  initialData?: Product;
+  isEditing?: boolean;
 }
 
-export default function ProductForm({ onProductCreated, token }: ProductFormProps) {
+export default function ProductForm({ onProductCreated, token, initialData, isEditing }: ProductFormProps) {
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<Product>();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (initialData) {
+      setValue('name', initialData.name);
+      setValue('description', initialData.description);
+      setValue('price', initialData.price);
+      setValue('quantity', initialData.quantity);
+    }
+  }, [initialData, setValue]);
 
   const onSubmit = async (data: Product) => {
     if (!token) {
@@ -34,8 +46,12 @@ export default function ProductForm({ onProductCreated, token }: ProductFormProp
         quantity: Number(data.quantity)
       };
 
-      const response = await fetch('http://localhost:3000/products', {
-        method: 'POST',
+      const url = isEditing && initialData?._id 
+        ? `http://localhost:3000/products/${initialData._id}`
+        : 'http://localhost:3000/products';
+
+      const response = await fetch(url, {
+        method: isEditing ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
@@ -45,15 +61,14 @@ export default function ProductForm({ onProductCreated, token }: ProductFormProp
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create product');
+        throw new Error(errorData.message || `Failed to ${isEditing ? 'update' : 'create'} product`);
       }
 
       reset();
+      toast.success(`Product ${isSubmitting ? 'updated' : 'created'} successfully!`);
       onProductCreated();
-      toast.success('Product created successfully');
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      toast.error(errorMessage);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -61,7 +76,7 @@ export default function ProductForm({ onProductCreated, token }: ProductFormProp
 
   return (
     <div className="max-w-md mx-auto p-6">
-      <h2 className="text-xl font-semibold text-gray-800 mb-6">Create New Product</h2>
+      <h2 className="text-xl font-semibold text-gray-800 mb-6">{isEditing ? 'Update Product' : 'Create New Product'}</h2>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -130,7 +145,7 @@ export default function ProductForm({ onProductCreated, token }: ProductFormProp
             isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
           }`}
         >
-          {isSubmitting ? 'Creating...' : 'Create Product'}
+          {isSubmitting ? 'Submitting...' : isEditing ? 'Update Product' : 'Create Product'}
         </button>
       </form>
     </div>

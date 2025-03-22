@@ -14,20 +14,26 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Initialize auth state from localStorage synchronously
+const getInitialAuthState = () => {
+  if (typeof window === 'undefined') return { user: null, token: null };
+  
+  const storedToken = localStorage.getItem('token');
+  const storedUser = localStorage.getItem('user');
+  
+  return {
+    token: storedToken,
+    user: storedUser ? JSON.parse(storedUser) : null
+  };
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const initialState = getInitialAuthState();
+  const [user, setUser] = useState<User | null>(initialState.user);
+  const [token, setToken] = useState<string | null>(initialState.token);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Check for stored auth data on mount
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
     setIsLoading(false);
   }, []);
 

@@ -10,21 +10,16 @@ exports.DatabaseLoggingInterceptor = void 0;
 const common_1 = require("@nestjs/common");
 const operators_1 = require("rxjs/operators");
 let DatabaseLoggingInterceptor = class DatabaseLoggingInterceptor {
-    logger = new common_1.Logger('Database');
     intercept(context, next) {
         const request = context.switchToHttp().getRequest();
-        const { method, path } = request;
-        const startTime = Date.now();
-        return next.handle().pipe((0, operators_1.tap)({
-            next: (data) => {
-                const endTime = Date.now();
-                this.logger.log(`${method} ${path} - Query executed successfully in ${endTime - startTime}ms`);
-                this.logger.debug('Query result:', data);
-            },
-            error: (error) => {
-                const endTime = Date.now();
-                this.logger.error(`${method} ${path} - Query failed in ${endTime - startTime}ms`, error.stack);
-            },
+        const method = request.method;
+        const url = request.url;
+        console.log(`[Database Operation] ${method} ${url}`);
+        const now = Date.now();
+        return next.handle().pipe((0, operators_1.tap)((data) => {
+            const responseTime = Date.now() - now;
+            console.log(`[Database Response] ${method} ${url} - ${responseTime}ms`);
+            console.log('[Database Data]', JSON.stringify(data, null, 2));
         }));
     }
 };

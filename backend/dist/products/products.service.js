@@ -16,55 +16,109 @@ exports.ProductsService = void 0;
 const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
-const csv_parse_1 = require("csv-parse");
 const product_schema_1 = require("./schemas/product.schema");
+const csv = require("csv-parse");
 let ProductsService = class ProductsService {
     productModel;
     constructor(productModel) {
         this.productModel = productModel;
     }
-    async create(createProductDto) {
-        const createdProduct = await this.productModel.create(createProductDto);
-        return createdProduct;
+    async create(createProductDto, userId, companyId) {
+        const product = new this.productModel({
+            ...createProductDto,
+            userId: new mongoose_2.Types.ObjectId(userId),
+            companyId: new mongoose_2.Types.ObjectId(companyId),
+        });
+        return product.save();
     }
-    async findAll() {
-        return this.productModel.find().exec();
+    async findAll(userId, query) {
+        const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+        const skip = (page - 1) * limit;
+        const filter = { userId: new mongoose_2.Types.ObjectId(userId) };
+        if (search) {
+            filter.$or = [
+                { name: { $regex: search, $options: 'i' } },
+                { description: { $regex: search, $options: 'i' } },
+            ];
+        }
+        const sort = {};
+        sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+        const [data, total] = await Promise.all([
+            this.productModel
+                .find(filter)
+                .sort(sort)
+                .skip(skip)
+                .limit(limit)
+                .exec(),
+            this.productModel.countDocuments(filter),
+        ]);
+        const pages = Math.ceil(total / limit);
+        return { data, total, pages };
     }
-    async createManyFromCsv(fileBuffer) {
-        return new Promise((resolve, reject) => {
-            const products = [];
-            const parser = (0, csv_parse_1.parse)({
-                delimiter: ',',
-                columns: true,
-                skip_empty_lines: true,
-            });
-            parser.on('readable', () => {
+    async findOne(id, userId) {
+        const product = await this.productModel.findOne({
+            _id: new mongoose_2.Types.ObjectId(id),
+            userId: new mongoose_2.Types.ObjectId(userId),
+        });
+        if (!product) {
+            throw new common_1.NotFoundException('Product not found');
+        }
+        return product;
+    }
+    async update(id, updateProductDto, userId) {
+        const product = await this.productModel.findOneAndUpdate({
+            _id: new mongoose_2.Types.ObjectId(id),
+            userId: new mongoose_2.Types.ObjectId(userId),
+        }, { $set: updateProductDto }, { new: true });
+        if (!product) {
+            throw new common_1.NotFoundException('Product not found');
+        }
+        return product;
+    }
+    async remove(id, userId) {
+        const product = await this.productModel.findOneAndDelete({
+            _id: new mongoose_2.Types.ObjectId(id),
+            userId: new mongoose_2.Types.ObjectId(userId),
+        });
+        if (!product) {
+            throw new common_1.NotFoundException('Product not found');
+        }
+        return product;
+    }
+    async processUploadedFile(file, userId, companyId) {
+        const createdCount = await this.createManyFromCsv(file.buffer, userId, companyId);
+        return { created: createdCount };
+    }
+    async createManyFromCsv(fileBuffer, userId, companyId) {
+        const records = [];
+        const parser = csv.parse({
+            delimiter: ',',
+            columns: true,
+            skip_empty_lines: true,
+        });
+        const parsePromise = new Promise((resolve, reject) => {
+            parser.on('readable', function () {
                 let record;
                 while ((record = parser.read()) !== null) {
-                    const product = {
-                        name: record.name,
-                        description: record.description,
-                        price: parseFloat(record.price),
-                        quantity: parseInt(record.quantity, 10),
-                    };
-                    products.push(product);
+                    records.push(record);
                 }
             });
-            parser.on('error', (err) => {
-                reject(err);
-            });
-            parser.on('end', async () => {
-                try {
-                    const result = await this.productModel.insertMany(products);
-                    resolve(result.length);
-                }
-                catch (error) {
-                    reject(error);
-                }
-            });
-            parser.write(fileBuffer);
-            parser.end();
+            parser.on('error', reject);
+            parser.on('end', resolve);
         });
+        parser.write(fileBuffer);
+        parser.end();
+        await parsePromise;
+        const products = records.map((record) => ({
+            name: record.name,
+            description: record.description,
+            price: parseFloat(record.price),
+            quantity: parseInt(record.quantity, 10) || 0,
+            userId: new mongoose_2.Types.ObjectId(userId),
+            companyId: new mongoose_2.Types.ObjectId(companyId),
+        }));
+        const result = await this.productModel.insertMany(products);
+        return result.length;
     }
 };
 exports.ProductsService = ProductsService;

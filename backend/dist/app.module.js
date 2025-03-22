@@ -15,6 +15,7 @@ const products_module_1 = require("./products/products.module");
 const auth_module_1 = require("./auth/auth.module");
 const logging_middleware_1 = require("./common/middleware/logging.middleware");
 const database_logging_interceptor_1 = require("./common/interceptors/database-logging.interceptor");
+const companies_module_1 = require("./companies/companies.module");
 let AppModule = class AppModule {
     configure(consumer) {
         consumer.apply(logging_middleware_1.LoggingMiddleware).forRoutes('*');
@@ -36,6 +37,7 @@ exports.AppModule = AppModule = __decorate([
             }),
             products_module_1.ProductsModule,
             auth_module_1.AuthModule,
+            companies_module_1.CompaniesModule,
         ],
         providers: [
             {

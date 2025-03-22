@@ -2,6 +2,10 @@
 
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Product } from '@/types/product';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
+import ProductForm from '@/components/ProductForm';
 
 export interface ProductTableRef {
   fetchProducts: () => Promise<void>;
@@ -11,10 +15,23 @@ interface ProductTableProps {
   token: string | null;
 }
 
+interface ProductsResponse {
+  data: Product[];
+  total: number;
+  pages: number;
+}
+
 const ProductTable = forwardRef<ProductTableRef, ProductTableProps>(({ token }, ref) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [totalPages, setTotalPages] = useState(1);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null); // Added state
 
   const fetchProducts = async () => {
     if (!token) {
@@ -23,7 +40,15 @@ const ProductTable = forwardRef<ProductTableRef, ProductTableProps>(({ token }, 
     }
 
     try {
-      const response = await fetch('http://localhost:3000/products', {
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        sortBy,
+        sortOrder,
+        ...(search && { search }),
+      });
+
+      const response = await fetch(`http://localhost:3000/products?${queryParams}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -33,8 +58,9 @@ const ProductTable = forwardRef<ProductTableRef, ProductTableProps>(({ token }, 
         throw new Error('Failed to fetch products');
       }
 
-      const data = await response.json();
+      const { data, pages }: ProductsResponse = await response.json();
       setProducts(data);
+      setTotalPages(pages);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -49,73 +75,164 @@ const ProductTable = forwardRef<ProductTableRef, ProductTableProps>(({ token }, 
 
   useEffect(() => {
     fetchProducts();
-  }, [token]);
+  }, [page, sortBy, sortOrder, search]);
+
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const handleDelete = async (productId: string) => {
+    if (!token) return;
+
+    try {
+      const response = await fetch(`http://localhost:3000/products/${productId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete product');
+      }
+
+      fetchProducts();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete product');
+    }
+  };
 
   if (isLoading) {
-    return (
-      <div className="p-6 text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Loading products...</p>
-      </div>
-    );
+    return <div className="text-center p-4">Loading...</div>;
   }
 
   if (error) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded" role="alert">
-          {error}
-        </div>
-      </div>
-    );
-  }
-
-  if (products.length === 0) {
-    return (
-      <div className="p-6 text-center text-gray-500">
-        No products found. Add some products to see them here.
-      </div>
-    );
+    return <div className="text-red-500 p-4">{error}</div>;
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Name
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Description
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Price
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Quantity
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {products.map((product) => (
-            <tr key={product._id}>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {product.name}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {product.description || '-'}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                ${product.price.toFixed(2)}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {product.quantity}
-              </td>
+    <div className="space-y-4">
+      {selectedProduct && (
+        <div className="mb-8">
+          <ProductForm
+            token={token}
+            onProductCreated={() => {
+              setSelectedProduct(null);
+              fetchProducts();
+            }}
+            initialData={selectedProduct}
+            isEditing={true}
+          />
+        </div>
+      )}
+      <div className="flex gap-4 items-center">
+        <Input
+          type="text"
+          placeholder="Search products..."
+          value={search}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearch(e.target.value)}
+          className="max-w-sm bg-white"
+        />
+      </div>
+
+      <div className="rounded-lg border">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('name')}>
+                <div className="flex items-center gap-1">
+                  Name
+                  <ArrowUpDown className="h-4 w-4" />
+                </div>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                Description
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('price')}>
+                <div className="flex items-center gap-1">
+                  Price
+                  <ArrowUpDown className="h-4 w-4" />
+                </div>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('quantity')}>
+                <div className="flex items-center gap-1">
+                  Quantity
+                  <ArrowUpDown className="h-4 w-4" />
+                </div>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {products.map((product) => (
+              <tr key={product._id}>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-900">{product.name}</td>
+                <td className="px-6 py-4 text-gray-900">{product.description}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-900">${product.price.toFixed(2)}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-gray-900">{product.quantity}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSelectedProduct(product)}
+                      className="text-blue-600 hover:text-blue-900"
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (product._id && confirm('Are you sure you want to delete this product?')) {
+                          handleDelete(product._id);
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-gray-900">
+          Page {page} of {totalPages}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="text-black"
+          >
+            <ChevronLeft className="h-4 w-4 text-black" />
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="text-black"
+          >
+            Next
+            <ChevronRight className="h-4 w-4 text-black" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 });
