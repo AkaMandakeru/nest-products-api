@@ -2,8 +2,4 @@ export declare class LoginDto {
     email: string;
     password: string;
 }
-export declare class RegisterDto {
-    email: string;
-    password: string;
-    name: string;
-}
+export { RegisterDto } from './register.dto';

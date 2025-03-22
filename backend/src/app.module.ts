@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { LoggingMiddleware } from './common/middleware/logging.middleware';
 import { DatabaseLoggingInterceptor } from './common/interceptors/database-logging.interceptor';
 import { CompaniesModule } from './companies/companies.module';
+import { CustomersModule } from './customers/customers.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { CompaniesModule } from './companies/companies.module';
     ProductsModule,
     AuthModule,
     CompaniesModule,
+    CustomersModule,
   ],
   providers: [
     {

@@ -1,7 +1,8 @@
 import { JwtService } from '@nestjs/jwt';
 import { Model } from 'mongoose';
 import { UserDocument } from '../users/schemas/user.schema';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
+import { LoginDto } from './dto/auth.dto';
+import { RegisterDto } from './dto/register.dto';
 export declare class AuthService {
     private userModel;
     private jwtService;
@@ -11,6 +12,7 @@ export declare class AuthService {
             id: unknown;
             email: string;
             name: string;
+            document: string;
         };
         token: string;
     }>;

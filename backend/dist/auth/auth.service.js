@@ -27,7 +27,7 @@ let AuthService = class AuthService {
         this.jwtService = jwtService;
     }
     async register(registerDto) {
-        const { email, password, name } = registerDto;
+        const { email, password, name, document } = registerDto;
         const existingUser = await this.userModel.findOne({ email });
         if (existingUser) {
             throw new common_1.UnauthorizedException('Email already registered');
@@ -37,6 +37,7 @@ let AuthService = class AuthService {
             email,
             password: hashedPassword,
             name,
+            document,
         });
         const token = this.jwtService.sign({ sub: user._id, email: user.email });
         return {
@@ -44,6 +45,7 @@ let AuthService = class AuthService {
                 id: user._id,
                 email: user.email,
                 name: user.name,
+                document: user.document,
             },
             token,
         };

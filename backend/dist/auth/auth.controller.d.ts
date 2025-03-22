@@ -8,6 +8,7 @@ export declare class AuthController {
             id: unknown;
             email: string;
             name: string;
+            document: string;
         };
         token: string;
     }>;

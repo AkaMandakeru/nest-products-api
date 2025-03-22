@@ -4,7 +4,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { User, UserDocument } from '../users/schemas/user.schema';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
+import { LoginDto } from './dto/auth.dto';
+import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
@@ -14,7 +15,7 @@ export class AuthService {
   ) {}
 
   async register(registerDto: RegisterDto) {
-    const { email, password, name } = registerDto;
+    const { email, password, name, document } = registerDto;
 
     // Check if user exists
     const existingUser = await this.userModel.findOne({ email });
@@ -30,6 +31,7 @@ export class AuthService {
       email,
       password: hashedPassword,
       name,
+      document,
     });
 
     // Generate token
@@ -40,6 +42,7 @@ export class AuthService {
         id: user._id,
         email: user.email,
         name: user.name,
+        document: user.document,
       },
       token,
     };

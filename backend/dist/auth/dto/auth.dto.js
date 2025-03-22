@@ -25,24 +25,6 @@ __decorate([
     (0, class_validator_1.MinLength)(6),
     __metadata("design:type", String)
 ], LoginDto.prototype, "password", void 0);
-class RegisterDto {
-    email;
-    password;
-    name;
-}
-exports.RegisterDto = RegisterDto;
-__decorate([
-    (0, class_validator_1.IsEmail)(),
-    __metadata("design:type", String)
-], RegisterDto.prototype, "email", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(6),
-    __metadata("design:type", String)
-], RegisterDto.prototype, "password", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(2),
-    __metadata("design:type", String)
-], RegisterDto.prototype, "name", void 0);
+var register_dto_1 = require("./register.dto");
+Object.defineProperty(exports, "RegisterDto", { enumerable: true, get: function () { return register_dto_1.RegisterDto; } });
 //# sourceMappingURL=auth.dto.js.map
