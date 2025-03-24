@@ -1,11 +1,12 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { User, UserDocument } from '../users/schemas/user.schema';
+import { User, UserDocument } from './schemas/user.schema';
 import { LoginDto } from './dto/auth.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UserResponse } from './interfaces/user-response.interface';
 
 @Injectable()
 export class AuthService {
@@ -14,7 +15,17 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(registerDto: RegisterDto) {
+  private toUserResponse(user: UserDocument): UserResponse {
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      document: user.document,
+      companyId: user.companyId?.toString() || '',
+    };
+  }
+
+  async register(registerDto: RegisterDto): Promise<{ user: UserResponse; token: string }> {
     const { email, password, name, document } = registerDto;
 
     // Check if user exists
@@ -35,20 +46,18 @@ export class AuthService {
     });
 
     // Generate token
-    const token = this.jwtService.sign({ sub: user._id, email: user.email });
+    const token = this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+    });
 
     return {
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        document: user.document,
-      },
+      user: this.toUserResponse(user),
       token,
     };
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto): Promise<{ user: UserResponse; token: string }> {
     const { email, password } = loginDto;
 
     // Find user
@@ -64,23 +73,22 @@ export class AuthService {
     }
 
     // Generate token
-    const token = this.jwtService.sign({ sub: user._id, email: user.email });
+    const token = this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+    });
 
     return {
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-      },
+      user: this.toUserResponse(user),
       token,
     };
   }
 
-  async validateUser(userId: string): Promise<any> {
+  async validateUser(userId: string): Promise<UserResponse> {
     const user = await this.userModel.findById(userId);
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-    return { id: user._id, email: user.email, name: user.name };
+    return this.toUserResponse(user);
   }
 }

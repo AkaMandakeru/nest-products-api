@@ -16,55 +16,78 @@ exports.CustomersService = void 0;
 const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
+const crypto_1 = require("crypto");
 const customer_schema_1 = require("./schemas/customer.schema");
-const user_schema_1 = require("../auth/schemas/user.schema");
-const auth_service_1 = require("../auth/auth.service");
+const users_service_1 = require("../users/users.service");
 let CustomersService = class CustomersService {
     customerModel;
-    userModel;
-    authService;
-    constructor(customerModel, userModel, authService) {
+    usersService;
+    constructor(customerModel, usersService) {
         this.customerModel = customerModel;
-        this.userModel = userModel;
-        this.authService = authService;
+        this.usersService = usersService;
     }
-    async create(createCustomerDto, companyId) {
-        let user = await this.userModel.findOne({
-            $or: [
-                { email: createCustomerDto.email },
-                { document: createCustomerDto.document },
-            ],
-        });
-        if (!user) {
-            const password = Math.random().toString(36).slice(-8);
-            const { user: newUser } = await this.authService.register({
-                email: createCustomerDto.email,
-                password,
-                name: createCustomerDto.name,
-                document: createCustomerDto.document,
+    generateCustomerCode() {
+        return (0, crypto_1.randomBytes)(3).toString('hex').toUpperCase();
+    }
+    async ensureUniqueCode(companyId) {
+        let code;
+        let isUnique = false;
+        let attempts = 0;
+        const maxAttempts = 10;
+        while (!isUnique && attempts < maxAttempts) {
+            code = this.generateCustomerCode();
+            const existingCustomer = await this.customerModel.findOne({
+                companyId: new mongoose_2.Types.ObjectId(companyId),
+                code,
             });
-            user = await this.userModel.findById(newUser.id);
-            if (!user) {
-                throw new Error('Failed to create user');
+            if (!existingCustomer) {
+                isUnique = true;
             }
+            attempts++;
         }
+        if (!isUnique) {
+            throw new Error('Failed to generate unique customer code');
+        }
+        return code;
+    }
+    async create(companyId, createCustomerDto) {
+        if (!mongoose_2.Types.ObjectId.isValid(companyId)) {
+            throw new common_1.NotFoundException('Invalid company ID');
+        }
+        const code = await this.ensureUniqueCode(companyId);
+        const user = await this.usersService.findOrCreate({
+            email: createCustomerDto.email,
+            document: createCustomerDto.document,
+            name: createCustomerDto.name,
+        });
         const customer = new this.customerModel({
-            userId: new mongoose_2.Types.ObjectId(user.id),
+            userId: user._id,
             companyId: new mongoose_2.Types.ObjectId(companyId),
-            code: createCustomerDto.code,
+            code,
             name: createCustomerDto.name,
             phone: createCustomerDto.phone,
             address: createCustomerDto.address,
+            isActive: true,
         });
         return customer.save();
     }
     async findAll(companyId) {
+        if (!companyId) {
+            return [];
+        }
+        if (!mongoose_2.Types.ObjectId.isValid(companyId)) {
+            throw new common_1.NotFoundException('Invalid company ID');
+        }
         return this.customerModel
             .find({ companyId: new mongoose_2.Types.ObjectId(companyId) })
             .populate('userId', 'email name document')
+            .sort({ createdAt: -1 })
             .exec();
     }
-    async findOne(id, companyId) {
+    async findOne(companyId, id) {
+        if (!mongoose_2.Types.ObjectId.isValid(companyId)) {
+            throw new common_1.NotFoundException('Invalid company ID');
+        }
         const customer = await this.customerModel
             .findOne({
             _id: new mongoose_2.Types.ObjectId(id),
@@ -77,44 +100,55 @@ let CustomersService = class CustomersService {
         }
         return customer;
     }
-    async findByCode(code, companyId) {
-        return this.customerModel
-            .findOne({
-            code,
-            companyId: new mongoose_2.Types.ObjectId(companyId),
-        })
-            .populate('userId', 'email name document')
-            .exec();
-    }
-    async update(id, updateCustomerDto, companyId) {
+    async update(companyId, id, updateCustomerDto) {
+        if (!mongoose_2.Types.ObjectId.isValid(companyId)) {
+            throw new common_1.NotFoundException('Invalid company ID');
+        }
         const customer = await this.customerModel
-            .findOneAndUpdate({
+            .findOne({
             _id: new mongoose_2.Types.ObjectId(id),
             companyId: new mongoose_2.Types.ObjectId(companyId),
-        }, { $set: updateCustomerDto }, { new: true })
-            .populate('userId', 'email name document');
+        })
+            .exec();
         if (!customer) {
             throw new common_1.NotFoundException('Customer not found');
         }
-        return customer;
-    }
-    async remove(id, companyId) {
-        const result = await this.customerModel.deleteOne({
-            _id: new mongoose_2.Types.ObjectId(id),
-            companyId: new mongoose_2.Types.ObjectId(companyId),
+        if (updateCustomerDto.email || updateCustomerDto.name || updateCustomerDto.document) {
+            await this.usersService.update(customer.userId.toString(), {
+                email: updateCustomerDto.email,
+                name: updateCustomerDto.name,
+                document: updateCustomerDto.document,
+            });
+        }
+        Object.assign(customer, {
+            name: updateCustomerDto.name,
+            phone: updateCustomerDto.phone,
+            address: updateCustomerDto.address,
         });
-        if (result.deletedCount === 0) {
+        return customer.save();
+    }
+    async remove(companyId, id) {
+        if (!mongoose_2.Types.ObjectId.isValid(companyId)) {
+            throw new common_1.NotFoundException('Invalid company ID');
+        }
+        const customer = await this.customerModel
+            .findOne({
+            _id: new mongoose_2.Types.ObjectId(id),
+            companyId: new mongoose_2.Types.ObjectId(companyId),
+        })
+            .exec();
+        if (!customer) {
             throw new common_1.NotFoundException('Customer not found');
         }
+        await customer.deleteOne();
+        return { id };
     }
 };
 exports.CustomersService = CustomersService;
 exports.CustomersService = CustomersService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(customer_schema_1.Customer.name)),
-    __param(1, (0, mongoose_1.InjectModel)(user_schema_1.User.name)),
     __metadata("design:paramtypes", [mongoose_2.Model,
-        mongoose_2.Model,
-        auth_service_1.AuthService])
+        users_service_1.UsersService])
 ], CustomersService);
 //# sourceMappingURL=customers.service.js.map

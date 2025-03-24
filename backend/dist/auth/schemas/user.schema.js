@@ -17,6 +17,9 @@ let User = class User {
     name;
     email;
     password;
+    document;
+    createdAt;
+    updatedAt;
 };
 exports.User = User;
 __decorate([
@@ -31,8 +34,23 @@ __decorate([
     (0, mongoose_1.Prop)({ required: true }),
     __metadata("design:type", String)
 ], User.prototype, "password", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ required: true }),
+    __metadata("design:type", String)
+], User.prototype, "document", void 0);
 exports.User = User = __decorate([
-    (0, mongoose_1.Schema)({ timestamps: true })
+    (0, mongoose_1.Schema)({ timestamps: true, toJSON: { virtuals: true } })
 ], User);
 exports.UserSchema = mongoose_1.SchemaFactory.createForClass(User);
+exports.UserSchema.virtual('id').get(function () {
+    return this._id.toHexString();
+});
+exports.UserSchema.set('toJSON', {
+    virtuals: true,
+    transform: (_, converted) => {
+        delete converted._id;
+        delete converted.__v;
+        return converted;
+    },
+});
 //# sourceMappingURL=user.schema.js.map

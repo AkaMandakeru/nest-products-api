@@ -17,8 +17,6 @@ const common_1 = require("@nestjs/common");
 const customers_service_1 = require("./customers.service");
 const create_customer_dto_1 = require("./dto/create-customer.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
-const current_user_decorator_1 = require("../auth/decorators/current-user.decorator");
-const user_schema_1 = require("../auth/schemas/user.schema");
 const companies_service_1 = require("../companies/companies.service");
 let CustomersController = class CustomersController {
     customersService;
@@ -27,71 +25,80 @@ let CustomersController = class CustomersController {
         this.customersService = customersService;
         this.companiesService = companiesService;
     }
-    async create(createCustomerDto, user) {
-        const company = await this.companiesService.findByUserId(user.id);
-        const existingCustomer = await this.customersService.findByCode(createCustomerDto.code, company._id.toString());
-        if (existingCustomer) {
-            throw new common_1.BadRequestException('Customer code already exists');
+    async create(createCustomerDto, req) {
+        try {
+            const company = await this.companiesService.findByUserId(req.user.id);
+            return this.customersService.create(company.id, createCustomerDto);
         }
-        return this.customersService.create(createCustomerDto, company._id.toString());
+        catch (error) {
+            return null;
+        }
     }
-    async findAll(user) {
-        const company = await this.companiesService.findByUserId(user.id);
-        return this.customersService.findAll(company._id.toString());
+    async findAll(req) {
+        try {
+            const company = await this.companiesService.findByUserId(req.user.id);
+            return this.customersService.findAll(company.id);
+        }
+        catch (error) {
+            return [];
+        }
     }
-    async findOne(id, user) {
-        const company = await this.companiesService.findByUserId(user.id);
-        return this.customersService.findOne(id, company._id.toString());
+    async findOne(id, req) {
+        try {
+            const company = await this.companiesService.findByUserId(req.user.id);
+            return this.customersService.findOne(company.id, id);
+        }
+        catch (error) {
+            return null;
+        }
     }
-    async update(id, updateCustomerDto, user) {
-        const company = await this.companiesService.findByUserId(user.id);
-        return this.customersService.update(id, updateCustomerDto, company._id.toString());
+    update(req, id, updateCustomerDto) {
+        return this.customersService.update(req.user.companyId, id, updateCustomerDto);
     }
-    async remove(id, user) {
-        const company = await this.companiesService.findByUserId(user.id);
-        return this.customersService.remove(id, company._id.toString());
+    remove(req, id) {
+        return this.customersService.remove(req.user.companyId, id);
     }
 };
 exports.CustomersController = CustomersController;
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
-    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_customer_dto_1.CreateCustomerDto, user_schema_1.User]),
+    __metadata("design:paramtypes", [create_customer_dto_1.CreateCustomerDto, Object]),
     __metadata("design:returntype", Promise)
 ], CustomersController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
-    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [user_schema_1.User]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], CustomersController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, user_schema_1.User]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], CustomersController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Put)(':id'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)()),
-    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object, user_schema_1.User]),
-    __metadata("design:returntype", Promise)
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", void 0)
 ], CustomersController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, user_schema_1.User]),
-    __metadata("design:returntype", Promise)
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
 ], CustomersController.prototype, "remove", null);
 exports.CustomersController = CustomersController = __decorate([
     (0, common_1.Controller)('customers'),

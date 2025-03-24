@@ -18,13 +18,22 @@ const jwt_1 = require("@nestjs/jwt");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const bcrypt = require("bcrypt");
-const user_schema_1 = require("../users/schemas/user.schema");
+const user_schema_1 = require("./schemas/user.schema");
 let AuthService = class AuthService {
     userModel;
     jwtService;
     constructor(userModel, jwtService) {
         this.userModel = userModel;
         this.jwtService = jwtService;
+    }
+    toUserResponse(user) {
+        return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            document: user.document,
+            companyId: user.companyId?.toString() || '',
+        };
     }
     async register(registerDto) {
         const { email, password, name, document } = registerDto;
@@ -39,14 +48,12 @@ let AuthService = class AuthService {
             name,
             document,
         });
-        const token = this.jwtService.sign({ sub: user._id, email: user.email });
+        const token = this.jwtService.sign({
+            sub: user.id,
+            email: user.email,
+        });
         return {
-            user: {
-                id: user._id,
-                email: user.email,
-                name: user.name,
-                document: user.document,
-            },
+            user: this.toUserResponse(user),
             token,
         };
     }
@@ -60,13 +67,12 @@ let AuthService = class AuthService {
         if (!isPasswordValid) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
-        const token = this.jwtService.sign({ sub: user._id, email: user.email });
+        const token = this.jwtService.sign({
+            sub: user.id,
+            email: user.email,
+        });
         return {
-            user: {
-                id: user._id,
-                email: user.email,
-                name: user.name,
-            },
+            user: this.toUserResponse(user),
             token,
         };
     }
@@ -75,7 +81,7 @@ let AuthService = class AuthService {
         if (!user) {
             throw new common_1.UnauthorizedException('User not found');
         }
-        return { id: user._id, email: user.email, name: user.name };
+        return this.toUserResponse(user);
     }
 };
 exports.AuthService = AuthService;

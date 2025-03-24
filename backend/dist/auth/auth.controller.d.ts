@@ -1,24 +1,17 @@
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
+import { LoginDto } from './dto/auth.dto';
+import { RegisterDto } from './dto/register.dto';
+import { UserResponse } from './interfaces/user-response.interface';
 export declare class AuthController {
     private readonly authService;
     constructor(authService: AuthService);
     register(registerDto: RegisterDto): Promise<{
-        user: {
-            id: unknown;
-            email: string;
-            name: string;
-            document: string;
-        };
+        user: UserResponse;
         token: string;
     }>;
     login(loginDto: LoginDto): Promise<{
-        user: {
-            id: unknown;
-            email: string;
-            name: string;
-        };
+        user: UserResponse;
         token: string;
     }>;
-    getProfile(user: any): Promise<any>;
+    getProfile(req: any): Promise<UserResponse>;
 }

@@ -11,7 +11,6 @@ interface CustomerFormProps {
 
 export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerFormProps) {
   const [formData, setFormData] = useState<CreateCustomerDto>({
-    code: '',
     name: '',
     email: '',
     document: '',
@@ -24,7 +23,6 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
   useEffect(() => {
     if (customer) {
       setFormData({
-        code: customer.code,
         name: customer.name,
         email: customer.userId.email,
         document: customer.userId.document,
@@ -58,17 +56,6 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Code</label>
-          <input
-            type="text"
-            required
-            value={formData.code}
-            onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          />
-        </div>
-
         <div>
           <label className="block text-sm font-medium text-gray-700">Name</label>
           <input
@@ -112,7 +99,7 @@ export default function CustomerForm({ customer, onSubmit, onCancel }: CustomerF
           />
         </div>
 
-        <div>
+        <div className="col-span-2">
           <label className="block text-sm font-medium text-gray-700">Address</label>
           <input
             type="text"

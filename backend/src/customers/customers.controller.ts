@@ -7,13 +7,11 @@ import {
   Delete,
   Put,
   UseGuards,
-  BadRequestException,
+  Request,
 } from '@nestjs/common';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from '../auth/schemas/user.schema';
 import { CompaniesService } from '../companies/companies.service';
 
 @Controller('customers')
@@ -25,48 +23,46 @@ export class CustomersController {
   ) {}
 
   @Post()
-  async create(@Body() createCustomerDto: CreateCustomerDto, @CurrentUser() user: User) {
-    // Get user's company
-    const company = await this.companiesService.findByUserId(user.id);
-
-    // Check if customer code already exists for this company
-    const existingCustomer = await this.customersService.findByCode(
-      createCustomerDto.code,
-      company._id.toString(),
-    );
-
-    if (existingCustomer) {
-      throw new BadRequestException('Customer code already exists');
+  async create(@Body() createCustomerDto: CreateCustomerDto, @Request() req) {
+    try {
+      const company = await this.companiesService.findByUserId(req.user.id);
+      return this.customersService.create(company.id, createCustomerDto);
+    } catch (error) {
+      return null; // Return null if user has no company
     }
-
-    return this.customersService.create(createCustomerDto, company._id.toString());
   }
 
   @Get()
-  async findAll(@CurrentUser() user: User) {
-    const company = await this.companiesService.findByUserId(user.id);
-    return this.customersService.findAll(company._id.toString());
+  async findAll(@Request() req) {
+    try {
+      const company = await this.companiesService.findByUserId(req.user.id);
+      return this.customersService.findAll(company.id);
+    } catch (error) {
+      return []; // Return empty array if user has no company
+    }
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string, @CurrentUser() user: User) {
-    const company = await this.companiesService.findByUserId(user.id);
-    return this.customersService.findOne(id, company._id.toString());
+  async findOne(@Param('id') id: string, @Request() req) {
+    try {
+      const company = await this.companiesService.findByUserId(req.user.id);
+      return this.customersService.findOne(company.id, id);
+    } catch (error) {
+      return null; // Return null if user has no company
+    }
   }
 
   @Put(':id')
-  async update(
+  update(
+    @Request() req,
     @Param('id') id: string,
     @Body() updateCustomerDto: Partial<CreateCustomerDto>,
-    @CurrentUser() user: User,
   ) {
-    const company = await this.companiesService.findByUserId(user.id);
-    return this.customersService.update(id, updateCustomerDto, company._id.toString());
+    return this.customersService.update(req.user.companyId, id, updateCustomerDto);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string, @CurrentUser() user: User) {
-    const company = await this.companiesService.findByUserId(user.id);
-    return this.customersService.remove(id, company._id.toString());
+  remove(@Request() req, @Param('id') id: string) {
+    return this.customersService.remove(req.user.companyId, id);
   }
 }

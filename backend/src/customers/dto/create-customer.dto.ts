@@ -1,17 +1,16 @@
-import { IsString, IsOptional, IsEmail } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateCustomerDto {
   @IsString()
-  code: string;
-
-  @IsString()
+  @MinLength(2)
   name: string;
-
-  @IsString()
-  document: string;
 
   @IsEmail()
   email: string;
+
+  @IsString()
+  @MinLength(2)
+  document: string;
 
   @IsString()
   @IsOptional()

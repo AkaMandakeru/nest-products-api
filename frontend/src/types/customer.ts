@@ -16,7 +16,6 @@ export interface Customer {
 }
 
 export interface CreateCustomerDto {
-  code: string;
   name: string;
   email: string;
   document: string;

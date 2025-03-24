@@ -1,8 +1,7 @@
 export declare class CreateCustomerDto {
-    code: string;
     name: string;
-    document: string;
     email: string;
+    document: string;
     phone?: string;
     address?: string;
 }
